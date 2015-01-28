@@ -105,6 +105,7 @@ body {
   border-radius: 2px;
   margin: 2px;
 }
+
 .toy:hover {
   cursor: pointer;
 }

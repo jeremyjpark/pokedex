@@ -2,13 +2,72 @@ window.Pokedex = (window.Pokedex || {});
 window.Pokedex.Models = {};
 window.Pokedex.Collections = {};
 
-Pokedex.Models.Pokemon = null; // WRITE ME
+Pokedex.Models.Pokemon = Backbone.Model.extend({
+  urlRoot: '/pokemon',
 
-Pokedex.Models.Toy = null; // WRITE ME IN PHASE 2
+  // Phase II
+  parse: function (payload) {
+    if (payload.toys) {
+      this.toys().set(payload.toys);
+      delete payload.toys;
 
-Pokedex.Collections.Pokemon = null; // WRITE ME
+      // Phase IV
+      this.toys().forEach((function (toy) {
+        toy._pokemon = this;
+      }).bind(this));
+    }
 
-Pokedex.Collections.PokemonToys = null; // WRITE ME IN PHASE 2
+    return payload;
+  },
+
+  // Phase II
+  toys: function () {
+    if (!this._toys) {
+      this._toys =
+        new Pokedex.Collections.PokemonToys([], { pokemon: this });
+    }
+
+    return this._toys;
+  }
+});
+
+Pokedex.Models.Toy = Backbone.Model.extend({
+  urlRoot: '/toys',
+
+  // Phase IV
+  pokemon: function () {
+    if (!this._pokemon) {
+      this._pokemon =
+        new Pokedex.Models.Pokemon({ id: this.pokemon_id });
+    }
+
+    return this._pokemon;
+  },
+
+  // Phase IV
+  parse: function (payload) {
+    if (payload.pokemon) {
+      this._pokemon =
+        new Pokedex.Models.Pokemon(payload.pokemon, { parse: true });
+      delete payload.pokemon;
+    }
+
+    return payload;
+  }
+});
+
+Pokedex.Collections.Pokemon = Backbone.Collection.extend({
+  model: Pokedex.Models.Pokemon,
+  url: '/pokemon'
+});
+
+Pokedex.Collections.PokemonToys = Backbone.Collection.extend({
+  model: Pokedex.Models.Toy,
+
+  initialize: function(models, options) {
+    this.pokemon = options.pokemon;
+  }
+});
 
 window.Pokedex.Test = {
   testShow: function (id) {
@@ -39,10 +98,22 @@ window.Pokedex.RootView = function ($el) {
   this.$toyDetail = this.$el.find('.toy-detail');
 
   // Click handlers go here.
+  this.$pokeList.on(
+    'click', 'li', this.selectPokemonFromList.bind(this)
+  );
+  this.$newPoke.on(
+    'submit', this.submitPokemonForm.bind(this)
+  );
+  this.$pokeDetail.on(
+    'click', '.toys li', this.selectToyFromList.bind(this)
+  );
+  this.$toyDetail.on(
+    'change', 'select', this.reassignToy.bind(this)
+  );
 };
 
-$(function() {
-  var $rootEl = $('#pokedex');
-	window.Pokedex.rootView = new Pokedex.RootView($rootEl);
-  window.Pokedex.rootView.refreshPokemon();
-});
+// $(function() {
+//   var $rootEl = $('#pokedex');
+//   window.Pokedex.rootView = new Pokedex.RootView($rootEl);
+//   window.Pokedex.rootView.refreshPokemon();
+// });
